@@ -10,12 +10,13 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
-app.MapScalarApiReference();
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapCategoryEndpoints();
+    app.MapScalarApiReference();
 }
 
 app.UseHttpsRedirection();

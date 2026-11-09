@@ -8,3 +8,7 @@ Accept: application/json
 GET {{LibraryManagementAPI_HostAddress}}/categories
 
 ###
+
+GET {{LibraryManagementAPI_HostAddress}}/api/categories
+
+###
