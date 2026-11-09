@@ -6,7 +6,7 @@ namespace LibraryManagementAPI.Controllers;
 
 public static class CategoriesController
 {
-    private static List<Category> _categories = new List<Category>([
+    private static List<Category> _categories = new([
         new Category { Id = 1, Name = "test" },
         new Category { Id = 2, Name = "AC" },
         new Category { Id = 3, Name = "Fiber" },
@@ -25,6 +25,10 @@ public static class CategoriesController
         group.MapGet("/{id:int}", GetById)
             .WithName("GetById")
             .Produces<Category>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status404NotFound);
+        group.MapPut("/{id:int}", Update)
+            .Produces<Category>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
     }
@@ -74,4 +78,24 @@ public static class CategoriesController
         }
         return TypedResults.Ok(category);
     }
+
+    private static async Task<Results<Ok<Category>, ProblemHttpResult>> Update(int id, Category request)
+    {
+        var category = _categories.FirstOrDefault(cat => cat.Id == id);
+        if (category is null)
+        {
+            return TypedResults.Problem(detail: "Enter valid ID", statusCode: StatusCodes.Status404NotFound);
+        }
+
+        if (request.Name is not null && string.IsNullOrWhiteSpace(request.Name))
+        {
+            return TypedResults.Problem(
+                detail: "Name not correct",
+                statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        category.Name = request.Name ?? category.Name;
+        return TypedResults.Ok(category);
+    }
+
 }
