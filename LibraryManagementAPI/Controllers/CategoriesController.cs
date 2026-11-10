@@ -1,6 +1,5 @@
 ﻿using LibraryManagementAPI.Entities;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.Mvc;
 
 namespace LibraryManagementAPI.Controllers;
 
