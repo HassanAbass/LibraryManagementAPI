@@ -1,16 +1,12 @@
-﻿using LibraryManagementAPI.Entities;
+﻿using LibraryManagementAPI.DataAccess;
+using LibraryManagementAPI.Entities;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.EntityFrameworkCore;
 
 namespace LibraryManagementAPI.Controllers;
 
 public static class CategoriesController
 {
-    private static List<Category> _categories = new([
-        new Category { Id = 1, Name = "test" },
-        new Category { Id = 2, Name = "AC" },
-        new Category { Id = 3, Name = "Fiber" },
-        ]);
-
     public static void MapCategoryEndpoints(this IEndpointRouteBuilder endpointRouteBuilder)
     {
         var group = endpointRouteBuilder.MapGroup("/api/categories").WithTags("Categories");
@@ -29,23 +25,22 @@ public static class CategoriesController
             .Produces<Category>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status404NotFound);
-
     }
 
-    private static async Task<Results<NoContent, ProblemHttpResult>> Delete(int id)
+    private static async Task<Results<NoContent, ProblemHttpResult>> Delete(int id, LibraryDbContext dbContext)
     {
-        var categoryToBeDeleted = _categories.FirstOrDefault(c => c.Id == id);
-
-        if(categoryToBeDeleted is null)
+        var category = await dbContext.Categories.FindAsync(id);
+        if (category is null)
         {
             return TypedResults.Problem(statusCode: StatusCodes.Status404NotFound);
         }
-        _categories.Remove(categoryToBeDeleted);
+
+        dbContext.Categories.Remove(category);
+        await dbContext.SaveChangesAsync();
         return TypedResults.NoContent();
     }
 
-
-    private static async Task<Results<ProblemHttpResult, CreatedAtRoute<Category>>> Create(Category category)
+    private static async Task<Results<ProblemHttpResult, CreatedAtRoute<Category>>> Create(Category category, LibraryDbContext dbContext)
     {
         if (string.IsNullOrWhiteSpace(category.Name))
         {
@@ -53,24 +48,26 @@ public static class CategoriesController
                 detail: "Name not correct",
                 statusCode: StatusCodes.Status400BadRequest);
         }
-        if (_categories.Any(cat => cat.Id == category.Id) || _categories.Any(cat => cat.Name == category.Name))
+        if (await dbContext.Categories.AnyAsync(existing => existing.Name == category.Name))
         {
             return TypedResults.Problem(
                 detail: "Resource already exists",
                 statusCode: StatusCodes.Status409Conflict);
         }
-        _categories.Add(category);
 
+        dbContext.Categories.Add(category);
+        await dbContext.SaveChangesAsync();
         return TypedResults.CreatedAtRoute(category, "GetById", new { id = category.Id });
     }
 
-    private static async Task<Ok<List<Category>>> GetAll()
+    private static async Task<Ok<List<Category>>> GetAll(LibraryDbContext dbContext)
     {
-        return TypedResults.Ok(_categories);
+        return TypedResults.Ok(await dbContext.Categories.AsNoTracking().ToListAsync());
     }
-    private static async Task<Results<Ok<Category>, ProblemHttpResult>> GetById(int id)
+
+    private static async Task<Results<Ok<Category>, ProblemHttpResult>> GetById(int id, LibraryDbContext dbContext)
     {
-        var category = _categories.FirstOrDefault(cat => cat.Id == id);
+        var category = await dbContext.Categories.FindAsync(id);
         if (category is null)
         {
             return TypedResults.Problem(detail: "Enter valid ID", statusCode: StatusCodes.Status404NotFound);
@@ -78,9 +75,9 @@ public static class CategoriesController
         return TypedResults.Ok(category);
     }
 
-    private static async Task<Results<Ok<Category>, ProblemHttpResult>> Update(int id, Category request)
+    private static async Task<Results<Ok<Category>, ProblemHttpResult>> Update(int id, Category request, LibraryDbContext dbContext)
     {
-        var category = _categories.FirstOrDefault(cat => cat.Id == id);
+        var category = await dbContext.Categories.FindAsync(id);
         if (category is null)
         {
             return TypedResults.Problem(detail: "Enter valid ID", statusCode: StatusCodes.Status404NotFound);
@@ -94,6 +91,7 @@ public static class CategoriesController
         }
 
         category.Name = request.Name ?? category.Name;
+        await dbContext.SaveChangesAsync();
         return TypedResults.Ok(category);
     }
 

@@ -1,31 +1,21 @@
+using LibraryManagementAPI.DataAccess;
 using LibraryManagementAPI.Entities;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace LibraryManagementAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class AuthorsController : ControllerBase
+    [Tags("Authors")]
+    public class AuthorsController(LibraryDbContext libraryDbContext) : ControllerBase
     {
-        private static List<Author> _authors = new([
-            new Author { Id = 1, FirstName = "Jane", LastName = "Austen", YearOfBirth = 1775 },
-            new Author { Id = 2, FirstName = "Mark", LastName = "Twain", YearOfBirth = 1835 },
-            new Author { Id = 3, FirstName = "Virginia", LastName = "Woolf", YearOfBirth = 1882 },
-            new Author { Id = 4, FirstName = "George", LastName = "Orwell", YearOfBirth = 1903 },
-            new Author { Id = 5, FirstName = "Toni", LastName = "Morrison", YearOfBirth = 1931 },
-            new Author { Id = 6, FirstName = "Gabriel", LastName = "Marquez", YearOfBirth = 1927 },
-            new Author { Id = 7, FirstName = "Mary", LastName = "Shelley", YearOfBirth = 1797 },
-            new Author { Id = 8, FirstName = "Leo", LastName = "Tolstoy", YearOfBirth = 1828 },
-            new Author { Id = 9, FirstName = "Agatha", LastName = "Christie", YearOfBirth = 1890 },
-            new Author { Id = 10, FirstName = "James", LastName = "Baldwin", YearOfBirth = 1924 },
-        ]);
-
         [HttpGet]
         [ProducesResponseType(typeof(List<Author>), StatusCodes.Status200OK)]
         public async Task<ActionResult<List<Author>>> Get()
         {
-            return Ok(_authors);
+            return Ok(await libraryDbContext.Authors.ToListAsync());
         }
 
         [ProducesResponseType<Author>(StatusCodes.Status200OK)]
@@ -33,7 +23,7 @@ namespace LibraryManagementAPI.Controllers
         [HttpGet("{id:int}")]
         public async Task<ActionResult<Author>> GetById(int id)
         {
-            var author = _authors.FirstOrDefault(a => a.Id == id);
+            var author = await libraryDbContext.Authors.FirstOrDefaultAsync(a => a.Id == id);
             if (author is null)
             {
                 return Problem(detail: $"Author with id {id} not found", statusCode: StatusCodes.Status404NotFound);
@@ -46,7 +36,7 @@ namespace LibraryManagementAPI.Controllers
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<ActionResult<Author>> Create(Author author)
         {
-            if (_authors.Any(a => a.Id == author.Id) || _authors.Any(a => a.FirstName == author.FirstName && a.LastName == author.LastName))
+            if (await libraryDbContext.Authors.AnyAsync(a => a.Id == author.Id) || await libraryDbContext.Authors.AnyAsync(a => a.FirstName == author.FirstName && a.LastName == author.LastName))
             {
                 return Problem(detail: "Resource already exists", statusCode: StatusCodes.Status409Conflict);
             }
@@ -55,11 +45,12 @@ namespace LibraryManagementAPI.Controllers
                 return Problem(detail: "First name and last name are required", statusCode: StatusCodes.Status400BadRequest);
             }
 
-            if (_authors.Find(a => a.Id == author.Id) is not null)
+            if (await libraryDbContext.Authors.FirstOrDefaultAsync(a => a.Id == author.Id) is not null)
             {
                 return Problem(detail: $"Author with id {author.Id} already exists", statusCode: StatusCodes.Status409Conflict);
             }
-            _authors.Add(author);
+            libraryDbContext.Authors.Add(author);
+            await libraryDbContext.SaveChangesAsync();
 
             return CreatedAtAction(nameof(GetById), new { id = author.Id }, author);
         }
@@ -71,7 +62,7 @@ namespace LibraryManagementAPI.Controllers
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<ActionResult<Author>> Update(int id, Author request)
         {
-            var author = _authors.FirstOrDefault(a => a.Id == id);
+            var author = await libraryDbContext.Authors.FirstOrDefaultAsync(a => a.Id == id);
             if (author is null)
             {
                 return Problem(detail: $"Author with id {id} not found", statusCode: StatusCodes.Status404NotFound);
@@ -82,7 +73,7 @@ namespace LibraryManagementAPI.Controllers
                 return Problem(detail: "First name and last name are required", statusCode: StatusCodes.Status400BadRequest);
             }
 
-            if (_authors.Any(a => a.Id != id && a.FirstName == request.FirstName && a.LastName == request.LastName))
+            if (await libraryDbContext.Authors.AnyAsync(a => a.Id != id && a.FirstName == request.FirstName && a.LastName == request.LastName))
             {
                 return Problem(detail: "Resource already exists", statusCode: StatusCodes.Status409Conflict);
             }
@@ -90,6 +81,7 @@ namespace LibraryManagementAPI.Controllers
             author.FirstName = request.FirstName;
             author.LastName = request.LastName;
             author.YearOfBirth = request.YearOfBirth;
+            await libraryDbContext.SaveChangesAsync();
 
             return Ok(author);
         }
@@ -99,12 +91,13 @@ namespace LibraryManagementAPI.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult> Delete(int id)
         {
-            var author = _authors.FirstOrDefault(author => author.Id == id);
+            var author = await libraryDbContext.Authors.FirstOrDefaultAsync(author => author.Id == id);
             if (author is null)
             {
                 return Problem(detail: $"Author with id {id} not found", statusCode: StatusCodes.Status404NotFound);
             }
-            _authors.Remove(author);
+            libraryDbContext.Authors.Remove(author);
+            await libraryDbContext.SaveChangesAsync();
             return NoContent();
         }
     }
