@@ -1,5 +1,6 @@
 using LibraryManagementAPI.Controllers;
 using LibraryManagementAPI.DataAccess;
+using LibraryManagementAPI.Mapping;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 var builder = WebApplication.CreateBuilder(args);
@@ -9,7 +10,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddRouting(options => options.LowercaseUrls = true);
 builder.Services.AddDbContext<LibraryDbContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-
+builder.Services.AddSingleton<AuthorMapper>();
+builder.Services.AddSingleton<CategoryMapper>();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();

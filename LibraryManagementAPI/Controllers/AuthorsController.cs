@@ -1,6 +1,6 @@
 using LibraryManagementAPI.DataAccess;
-using LibraryManagementAPI.Entities;
-using Microsoft.AspNetCore.Http.HttpResults;
+using LibraryManagementAPI.DTOs.Authors;
+using LibraryManagementAPI.Mapping;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,60 +9,61 @@ namespace LibraryManagementAPI.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Tags("Authors")]
-    public class AuthorsController(LibraryDbContext libraryDbContext) : ControllerBase
+    public class AuthorsController(LibraryDbContext libraryDbContext, AuthorMapper authorMapper) : ControllerBase
     {
         [HttpGet]
-        [ProducesResponseType(typeof(List<Author>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<List<Author>>> Get()
+        [ProducesResponseType(typeof(List<AuthorReadDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<List<AuthorReadDto>>> Get()
         {
-            return Ok(await libraryDbContext.Authors.ToListAsync());
+            var authors = await libraryDbContext.Authors.ToListAsync();
+            return Ok(authors.Select(authorMapper.ToReadDto).ToList());
         }
 
-        [ProducesResponseType<Author>(StatusCodes.Status200OK)]
+        [ProducesResponseType<AuthorReadDto>(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [HttpGet("{id:int}")]
-        public async Task<ActionResult<Author>> GetById(int id)
+        public async Task<ActionResult<AuthorReadDto>> GetById(int id)
         {
-            var author = await libraryDbContext.Authors.FirstOrDefaultAsync(a => a.Id == id);
+            var author = await libraryDbContext.Authors.FirstOrDefaultAsync(author => author.Id == id);
             if (author is null)
             {
                 return Problem(detail: $"Author with id {id} not found", statusCode: StatusCodes.Status404NotFound);
             }
-            return Ok(author);
+            return Ok(authorMapper.ToReadDto(author));
         }
+ 
         [HttpPost]
-        [ProducesResponseType(typeof(Author), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(AuthorReadDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
-        public async Task<ActionResult<Author>> Create(Author author)
+        public async Task<ActionResult<AuthorReadDto>> Create(AuthorCreateDto request)
         {
-            if (await libraryDbContext.Authors.AnyAsync(a => a.Id == author.Id) || await libraryDbContext.Authors.AnyAsync(a => a.FirstName == author.FirstName && a.LastName == author.LastName))
-            {
-                return Problem(detail: "Resource already exists", statusCode: StatusCodes.Status409Conflict);
-            }
-            if (string.IsNullOrWhiteSpace(author.FirstName) || string.IsNullOrWhiteSpace(author.LastName))
+            if (string.IsNullOrWhiteSpace(request.FirstName) || string.IsNullOrWhiteSpace(request.LastName))
             {
                 return Problem(detail: "First name and last name are required", statusCode: StatusCodes.Status400BadRequest);
             }
 
-            if (await libraryDbContext.Authors.FirstOrDefaultAsync(a => a.Id == author.Id) is not null)
+            if (await libraryDbContext.Authors.AnyAsync(author => author.FirstName == request.FirstName && author.LastName == request.LastName))
             {
-                return Problem(detail: $"Author with id {author.Id} already exists", statusCode: StatusCodes.Status409Conflict);
+                return Problem(detail: "Resource already exists", statusCode: StatusCodes.Status409Conflict);
             }
+
+            var author = authorMapper.ToEntity(request);
             libraryDbContext.Authors.Add(author);
             await libraryDbContext.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetById), new { id = author.Id }, author);
+            var response = authorMapper.ToReadDto(author);
+            return CreatedAtAction(nameof(GetById), new { id = author.Id }, response);
         }
 
         [HttpPut("{id:int}")]
-        [ProducesResponseType(typeof(Author), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(AuthorReadDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
-        public async Task<ActionResult<Author>> Update(int id, Author request)
+        public async Task<ActionResult<AuthorReadDto>> Update(int id, AuthorUpdateDto request)
         {
-            var author = await libraryDbContext.Authors.FirstOrDefaultAsync(a => a.Id == id);
+            var author = await libraryDbContext.Authors.FirstOrDefaultAsync(author => author.Id == id);
             if (author is null)
             {
                 return Problem(detail: $"Author with id {id} not found", statusCode: StatusCodes.Status404NotFound);
@@ -73,17 +74,15 @@ namespace LibraryManagementAPI.Controllers
                 return Problem(detail: "First name and last name are required", statusCode: StatusCodes.Status400BadRequest);
             }
 
-            if (await libraryDbContext.Authors.AnyAsync(a => a.Id != id && a.FirstName == request.FirstName && a.LastName == request.LastName))
+            if (await libraryDbContext.Authors.AnyAsync(author => author.Id != id && author.FirstName == request.FirstName && author.LastName == request.LastName))
             {
                 return Problem(detail: "Resource already exists", statusCode: StatusCodes.Status409Conflict);
             }
 
-            author.FirstName = request.FirstName;
-            author.LastName = request.LastName;
-            author.YearOfBirth = request.YearOfBirth;
+            authorMapper.UpdateEntity(request, author);
             await libraryDbContext.SaveChangesAsync();
 
-            return Ok(author);
+            return Ok(authorMapper.ToReadDto(author));
         }
 
         [HttpDelete("{id:int}")]

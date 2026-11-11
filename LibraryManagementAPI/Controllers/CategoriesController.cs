@@ -1,5 +1,6 @@
 ﻿using LibraryManagementAPI.DataAccess;
-using LibraryManagementAPI.Entities;
+using LibraryManagementAPI.DTOs.Categories;
+using LibraryManagementAPI.Mapping;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,14 +16,14 @@ public static class CategoriesController
         group.MapDelete("/{id:int}", Delete)
             .ProducesProblem(StatusCodes.Status404NotFound);
         group.MapPost("/", Create)
-            .ProducesProblem(StatusCodes.Status409Conflict)
-            .ProducesProblem(StatusCodes.Status404NotFound);
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status409Conflict);
         group.MapGet("/{id:int}", GetById)
             .WithName("GetById")
-            .Produces<Category>(StatusCodes.Status200OK)
+            .Produces<CategoryReadDto>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status404NotFound);
         group.MapPut("/{id:int}", Update)
-            .Produces<Category>(StatusCodes.Status200OK)
+            .Produces<CategoryReadDto>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status404NotFound);
     }
@@ -40,42 +41,45 @@ public static class CategoriesController
         return TypedResults.NoContent();
     }
 
-    private static async Task<Results<ProblemHttpResult, CreatedAtRoute<Category>>> Create(Category category, LibraryDbContext dbContext)
+    private static async Task<Results<ProblemHttpResult, CreatedAtRoute<CategoryReadDto>>> Create(CategoryCreateDto request, LibraryDbContext dbContext, CategoryMapper categoryMapper)
     {
-        if (string.IsNullOrWhiteSpace(category.Name))
+        if (string.IsNullOrWhiteSpace(request.Name))
         {
             return TypedResults.Problem(
                 detail: "Name not correct",
                 statusCode: StatusCodes.Status400BadRequest);
         }
-        if (await dbContext.Categories.AnyAsync(existing => existing.Name == category.Name))
+        if (await dbContext.Categories.AnyAsync(existing => existing.Name == request.Name))
         {
             return TypedResults.Problem(
                 detail: "Resource already exists",
                 statusCode: StatusCodes.Status409Conflict);
         }
 
+        var category = categoryMapper.ToEntity(request);
         dbContext.Categories.Add(category);
         await dbContext.SaveChangesAsync();
-        return TypedResults.CreatedAtRoute(category, "GetById", new { id = category.Id });
+        var response = categoryMapper.ToReadDto(category);
+        return TypedResults.CreatedAtRoute(response, "GetById", new { id = category.Id });
     }
 
-    private static async Task<Ok<List<Category>>> GetAll(LibraryDbContext dbContext)
+    private static async Task<Ok<List<CategoryReadDto>>> GetAll(LibraryDbContext dbContext, CategoryMapper categoryMapper)
     {
-        return TypedResults.Ok(await dbContext.Categories.AsNoTracking().ToListAsync());
+        var categories = await dbContext.Categories.AsNoTracking().ToListAsync();
+        return TypedResults.Ok(categories.Select(categoryMapper.ToReadDto).ToList());
     }
 
-    private static async Task<Results<Ok<Category>, ProblemHttpResult>> GetById(int id, LibraryDbContext dbContext)
+    private static async Task<Results<Ok<CategoryReadDto>, ProblemHttpResult>> GetById(int id, LibraryDbContext dbContext, CategoryMapper categoryMapper)
     {
         var category = await dbContext.Categories.FindAsync(id);
         if (category is null)
         {
             return TypedResults.Problem(detail: "Enter valid ID", statusCode: StatusCodes.Status404NotFound);
         }
-        return TypedResults.Ok(category);
+        return TypedResults.Ok(categoryMapper.ToReadDto(category));
     }
 
-    private static async Task<Results<Ok<Category>, ProblemHttpResult>> Update(int id, Category request, LibraryDbContext dbContext)
+    private static async Task<Results<Ok<CategoryReadDto>, ProblemHttpResult>> Update(int id, CategoryUpdateDto request, LibraryDbContext dbContext, CategoryMapper categoryMapper)
     {
         var category = await dbContext.Categories.FindAsync(id);
         if (category is null)
@@ -92,7 +96,6 @@ public static class CategoriesController
 
         category.Name = request.Name ?? category.Name;
         await dbContext.SaveChangesAsync();
-        return TypedResults.Ok(category);
+        return TypedResults.Ok(categoryMapper.ToReadDto(category));
     }
-
 }
