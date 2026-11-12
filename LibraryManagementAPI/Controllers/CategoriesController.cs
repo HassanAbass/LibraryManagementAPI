@@ -1,5 +1,7 @@
-﻿using LibraryManagementAPI.DataAccess;
+﻿using FluentValidation;
+using LibraryManagementAPI.DataAccess;
 using LibraryManagementAPI.DTOs.Categories;
+using LibraryManagementAPI.Extensions;
 using LibraryManagementAPI.Mapping;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -41,19 +43,16 @@ public static class CategoriesController
         return TypedResults.NoContent();
     }
 
-    private static async Task<Results<ProblemHttpResult, CreatedAtRoute<CategoryReadDto>>> Create(CategoryCreateDto request, LibraryDbContext dbContext, CategoryMapper categoryMapper)
+    private static async Task<Results<ProblemHttpResult, CreatedAtRoute<CategoryReadDto>>> Create(CategoryCreateDto request, LibraryDbContext dbContext, CategoryMapper categoryMapper, IValidator<CategoryCreateDto> validator)
     {
-        if (string.IsNullOrWhiteSpace(request.Name))
+        var validationResult = await validator.ValidateAsync(request);
+        if (!validationResult.IsValid)
         {
-            return TypedResults.Problem(
-                detail: "Name not correct",
-                statusCode: StatusCodes.Status400BadRequest);
+            return validationResult.ToProblem();
         }
         if (await dbContext.Categories.AnyAsync(existing => existing.Name == request.Name))
         {
-            return TypedResults.Problem(
-                detail: "Resource already exists",
-                statusCode: StatusCodes.Status409Conflict);
+            return validationResult.ToProblem();
         }
 
         var category = categoryMapper.ToEntity(request);

@@ -1,6 +1,8 @@
+using FluentValidation;
 using LibraryManagementAPI.DataAccess;
 using LibraryManagementAPI.DTOs.Authors;
 using LibraryManagementAPI.Mapping;
+using LibraryManagementAPI.Validators.Author;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,7 +11,7 @@ namespace LibraryManagementAPI.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Tags("Authors")]
-    public class AuthorsController(LibraryDbContext libraryDbContext, AuthorMapper authorMapper) : ControllerBase
+    public class AuthorsController(LibraryDbContext libraryDbContext, AuthorMapper authorMapper, IValidator<AuthorCreateDto> createAuthorValidator) : ControllerBase
     {
         [HttpGet]
         [ProducesResponseType(typeof(List<AuthorReadDto>), StatusCodes.Status200OK)]
@@ -38,9 +40,10 @@ namespace LibraryManagementAPI.Controllers
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<ActionResult<AuthorReadDto>> Create(AuthorCreateDto request)
         {
-            if (string.IsNullOrWhiteSpace(request.FirstName) || string.IsNullOrWhiteSpace(request.LastName))
+            var validationResult = await createAuthorValidator.ValidateAsync(request);
+            if (!validationResult.IsValid)
             {
-                return Problem(detail: "First name and last name are required", statusCode: StatusCodes.Status400BadRequest);
+                return ValidationProblem(new ValidationProblemDetails(validationResult.ToDictionary()));
             }
 
             if (await libraryDbContext.Authors.AnyAsync(author => author.FirstName == request.FirstName && author.LastName == request.LastName))
