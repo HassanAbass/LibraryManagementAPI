@@ -2,6 +2,7 @@
 using LibraryManagementAPI.DataAccess;
 using LibraryManagementAPI.DTOs.Categories;
 using LibraryManagementAPI.Extensions;
+using LibraryManagementAPI.Filter;
 using LibraryManagementAPI.Mapping;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +19,7 @@ public static class CategoriesController
         group.MapDelete("/{id:int}", Delete)
             .ProducesProblem(StatusCodes.Status404NotFound);
         group.MapPost("/", Create)
+            .AddEndpointFilter<ValidationFilter<CategoryCreateDto>>()
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status409Conflict);
         group.MapGet("/{id:int}", GetById)
@@ -25,6 +27,7 @@ public static class CategoriesController
             .Produces<CategoryReadDto>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status404NotFound);
         group.MapPut("/{id:int}", Update)
+            .AddEndpointFilter<ValidationFilter<CategoryUpdateDto>>()
             .Produces<CategoryReadDto>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status404NotFound);
@@ -43,16 +46,11 @@ public static class CategoriesController
         return TypedResults.NoContent();
     }
 
-    private static async Task<Results<ProblemHttpResult, CreatedAtRoute<CategoryReadDto>>> Create(CategoryCreateDto request, LibraryDbContext dbContext, CategoryMapper categoryMapper, IValidator<CategoryCreateDto> validator)
+    private static async Task<Results<ProblemHttpResult, CreatedAtRoute<CategoryReadDto>>> Create(CategoryCreateDto request, LibraryDbContext dbContext, CategoryMapper categoryMapper)
     {
-        var validationResult = await validator.ValidateAsync(request);
-        if (!validationResult.IsValid)
-        {
-            return validationResult.ToProblem();
-        }
         if (await dbContext.Categories.AnyAsync(existing => existing.Name == request.Name))
         {
-            return validationResult.ToProblem();
+            return TypedResults.Problem(statusCode: StatusCodes.Status409Conflict);
         }
 
         var category = categoryMapper.ToEntity(request);

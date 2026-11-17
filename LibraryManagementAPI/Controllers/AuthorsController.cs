@@ -2,7 +2,6 @@ using FluentValidation;
 using LibraryManagementAPI.DataAccess;
 using LibraryManagementAPI.DTOs.Authors;
 using LibraryManagementAPI.Mapping;
-using LibraryManagementAPI.Validators.Author;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 

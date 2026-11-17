@@ -22,7 +22,7 @@ builder.Services.AddSingleton<CategoryMapper>();
 builder.Services.AddScoped<IValidator<CategoryCreateDto>, CreateCategoryValidator>();
 builder.Services.AddScoped<IValidator<CategoryUpdateDto>, UpdateCategoryValidator>();
 builder.Services.AddScoped<IValidator<AuthorCreateDto>, CreateAuthorValidator>();
-builder.Services.AddValidation();
+//builder.Services.AddValidation();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
