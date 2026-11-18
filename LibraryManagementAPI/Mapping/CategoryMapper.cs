@@ -4,11 +4,12 @@ using Riok.Mapperly.Abstractions;
 
 namespace LibraryManagementAPI.Mapping;
 
-[Mapper]
+[Mapper(RequiredMappingStrategy = RequiredMappingStrategy.Target)]
 public partial class CategoryMapper
 {
     [MapperIgnoreTarget(nameof(Category.Id))]
-    public partial Category ToEntity(CategoryCreateDto dto);
+    [MapperIgnoreTarget(nameof(Category.Books))]
+    public partial Category ToEntity(CreateCategoryDto dto);
 
-    public partial CategoryReadDto ToReadDto(Category entity);
+    public partial ReadCategoryDto ToReadDto(Category entity);
 }

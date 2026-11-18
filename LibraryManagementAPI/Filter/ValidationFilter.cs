@@ -8,6 +8,13 @@ namespace LibraryManagementAPI.Filter
         {
             var validator = context.HttpContext.RequestServices.GetRequiredService<IValidator<T>>();
             var dto = context.Arguments.OfType<T>().FirstOrDefault();
+            if (dto is null)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["Request"] = ["A valid request body is required."]
+                });
+            }
 
             var validationResult = await validator.ValidateAsync(dto);
 

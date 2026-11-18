@@ -15,7 +15,7 @@ partial class LibraryDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261111115747_SeedRecords";
+    public override string LastMigrationId => "20261117130453_AddBooksTable";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -25,6 +25,21 @@ partial class LibraryDbContextModelSnapshot : ModelSnapshot
             .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
         SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+        modelBuilder.Entity("AuthorBook", b =>
+            {
+                b.Property<int>("AuthorsId")
+                    .HasColumnType("int");
+
+                b.Property<int>("BooksId")
+                    .HasColumnType("int");
+
+                b.HasKey("AuthorsId", "BooksId");
+
+                b.HasIndex("BooksId");
+
+                b.ToTable("AuthorBook");
+            });
 
         modelBuilder.Entity("LibraryManagementAPI.Entities.Author", b =>
             {
@@ -122,6 +137,34 @@ partial class LibraryDbContextModelSnapshot : ModelSnapshot
                     });
             });
 
+        modelBuilder.Entity("LibraryManagementAPI.Entities.Book", b =>
+            {
+                var id = b.Property<int>("Id")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("int");
+
+                SqlServerPropertyBuilderExtensions.UseIdentityColumn(id);
+
+                b.Property<int>("AvailableCopies")
+                    .HasColumnType("int");
+
+                b.Property<int>("CategoryId")
+                    .HasColumnType("int");
+
+                b.Property<string>("Title")
+                    .IsRequired()
+                    .HasColumnType("nvarchar(max)");
+
+                b.Property<int>("TotalCopies")
+                    .HasColumnType("int");
+
+                b.HasKey("Id");
+
+                b.HasIndex("CategoryId");
+
+                b.ToTable("Books");
+            });
+
         modelBuilder.Entity("LibraryManagementAPI.Entities.Category", b =>
             {
                 var id = b.Property<int>("Id")
@@ -154,6 +197,37 @@ partial class LibraryDbContextModelSnapshot : ModelSnapshot
                         Id = 3,
                         Name = "Fiber"
                     });
+            });
+
+        modelBuilder.Entity("AuthorBook", b =>
+            {
+                b.HasOne("LibraryManagementAPI.Entities.Author", null)
+                    .WithMany()
+                    .HasForeignKey("AuthorsId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired();
+
+                b.HasOne("LibraryManagementAPI.Entities.Book", null)
+                    .WithMany()
+                    .HasForeignKey("BooksId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired();
+            });
+
+        modelBuilder.Entity("LibraryManagementAPI.Entities.Book", b =>
+            {
+                b.HasOne("LibraryManagementAPI.Entities.Category", "Category")
+                    .WithMany("Books")
+                    .HasForeignKey("CategoryId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired();
+
+                b.Navigation("Category");
+            });
+
+        modelBuilder.Entity("LibraryManagementAPI.Entities.Category", b =>
+            {
+                b.Navigation("Books");
             });
 #pragma warning restore 612, 618
     }

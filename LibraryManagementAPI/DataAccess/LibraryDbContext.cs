@@ -11,6 +11,7 @@ namespace LibraryManagementAPI.DataAccess
 
         public DbSet<Author> Authors => Set<Author>();
         public DbSet<Category> Categories => Set<Category>();
+        public DbSet<Book> Books => Set<Book>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

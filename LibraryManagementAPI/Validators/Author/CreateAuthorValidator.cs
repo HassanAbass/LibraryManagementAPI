@@ -3,7 +3,7 @@ using LibraryManagementAPI.DTOs.Authors;
 
 namespace LibraryManagementAPI.Validators.Author
 {
-    public class CreateAuthorValidator : AbstractValidator<AuthorCreateDto>
+    public class CreateAuthorValidator : AbstractValidator<CreateAuthorDto>
     {
         public CreateAuthorValidator()
         {

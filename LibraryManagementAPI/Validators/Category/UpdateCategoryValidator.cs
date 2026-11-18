@@ -4,7 +4,7 @@ using LibraryManagementAPI.DTOs.Categories;
 namespace LibraryManagementAPI.Validators.Category
 {
 
-    public class UpdateCategoryValidator : AbstractValidator<CategoryUpdateDto>
+    public class UpdateCategoryValidator : AbstractValidator<UpdateCategoryDto>
     {
         public UpdateCategoryValidator()
         {

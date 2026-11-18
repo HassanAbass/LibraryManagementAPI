@@ -19,16 +19,16 @@ public static class CategoriesController
         group.MapDelete("/{id:int}", Delete)
             .ProducesProblem(StatusCodes.Status404NotFound);
         group.MapPost("/", Create)
-            .AddEndpointFilter<ValidationFilter<CategoryCreateDto>>()
+            .AddEndpointFilter<ValidationFilter<CreateCategoryDto>>()
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status409Conflict);
         group.MapGet("/{id:int}", GetById)
             .WithName("GetById")
-            .Produces<CategoryReadDto>(StatusCodes.Status200OK)
+            .Produces<ReadCategoryDto>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status404NotFound);
         group.MapPut("/{id:int}", Update)
-            .AddEndpointFilter<ValidationFilter<CategoryUpdateDto>>()
-            .Produces<CategoryReadDto>(StatusCodes.Status200OK)
+            .AddEndpointFilter<ValidationFilter<UpdateCategoryDto>>()
+            .Produces<ReadCategoryDto>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status404NotFound);
     }
@@ -46,7 +46,7 @@ public static class CategoriesController
         return TypedResults.NoContent();
     }
 
-    private static async Task<Results<ProblemHttpResult, CreatedAtRoute<CategoryReadDto>>> Create(CategoryCreateDto request, LibraryDbContext dbContext, CategoryMapper categoryMapper)
+    private static async Task<Results<ProblemHttpResult, CreatedAtRoute<ReadCategoryDto>>> Create(CreateCategoryDto request, LibraryDbContext dbContext, CategoryMapper categoryMapper)
     {
         if (await dbContext.Categories.AnyAsync(existing => existing.Name == request.Name))
         {
@@ -60,13 +60,13 @@ public static class CategoriesController
         return TypedResults.CreatedAtRoute(response, "GetById", new { id = category.Id });
     }
 
-    private static async Task<Ok<List<CategoryReadDto>>> GetAll(LibraryDbContext dbContext, CategoryMapper categoryMapper)
+    private static async Task<Ok<List<ReadCategoryDto>>> GetAll(LibraryDbContext dbContext, CategoryMapper categoryMapper)
     {
         var categories = await dbContext.Categories.AsNoTracking().ToListAsync();
         return TypedResults.Ok(categories.Select(categoryMapper.ToReadDto).ToList());
     }
 
-    private static async Task<Results<Ok<CategoryReadDto>, ProblemHttpResult>> GetById(int id, LibraryDbContext dbContext, CategoryMapper categoryMapper)
+    private static async Task<Results<Ok<ReadCategoryDto>, ProblemHttpResult>> GetById(int id, LibraryDbContext dbContext, CategoryMapper categoryMapper)
     {
         var category = await dbContext.Categories.FindAsync(id);
         if (category is null)
@@ -76,7 +76,7 @@ public static class CategoriesController
         return TypedResults.Ok(categoryMapper.ToReadDto(category));
     }
 
-    private static async Task<Results<Ok<CategoryReadDto>, ProblemHttpResult>> Update(int id, CategoryUpdateDto request, LibraryDbContext dbContext, CategoryMapper categoryMapper)
+    private static async Task<Results<Ok<ReadCategoryDto>, ProblemHttpResult>> Update(int id, UpdateCategoryDto request, LibraryDbContext dbContext, CategoryMapper categoryMapper)
     {
         var category = await dbContext.Categories.FindAsync(id);
         if (category is null)
