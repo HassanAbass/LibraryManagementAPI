@@ -6,6 +6,8 @@ using LibraryManagementAPI.DTOs.Categories;
 using LibraryManagementAPI.Filter;
 using LibraryManagementAPI.Mapping;
 using LibraryManagementAPI.Middleware;
+using LibraryManagementAPI.Services;
+using LibraryManagementAPI.Services.Contracts;
 using LibraryManagementAPI.Validators.Author;
 using LibraryManagementAPI.Validators.Category;
 using Microsoft.EntityFrameworkCore;
@@ -25,6 +27,7 @@ builder.Services.AddScoped<IValidator<CreateCategoryDto>, CreateCategoryValidato
 builder.Services.AddScoped<IValidator<UpdateCategoryDto>, UpdateCategoryValidator>();
 builder.Services.AddScoped<IValidator<CreateAuthorDto>, CreateAuthorValidator>();
 builder.Services.AddScoped<LogActionFilter>();
+builder.Services.AddScoped<IBookService, BookService>();
 //builder.Services.AddValidation();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
