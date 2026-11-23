@@ -1,11 +1,6 @@
-﻿using FluentValidation;
-using LibraryManagementAPI.DataAccess;
-using LibraryManagementAPI.DTOs.Categories;
+﻿using LibraryManagementAPI.DTOs.Categories;
 using LibraryManagementAPI.Extensions;
-using LibraryManagementAPI.Filter;
-using LibraryManagementAPI.Mapping;
-using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.EntityFrameworkCore;
+using LibraryManagementAPI.Services.Contracts;
 
 namespace LibraryManagementAPI.Controllers;
 
@@ -15,11 +10,13 @@ public static class CategoriesController
     {
         var group = endpointRouteBuilder.MapGroup("/api/categories").WithTags("Categories");
 
-        group.MapGet("/", GetAll);
+        group.MapGet("/", GetAll)
+            .Produces<List<ReadCategoryDto>>(StatusCodes.Status200OK);
         group.MapDelete("/{id:int}", Delete)
+            .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status404NotFound);
         group.MapPost("/", Create)
-            .AddEndpointFilter<ValidationFilter<CreateCategoryDto>>()
+            .Produces<ReadCategoryDto>(StatusCodes.Status201Created)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status409Conflict);
         group.MapGet("/{id:int}", GetById)
@@ -27,72 +24,48 @@ public static class CategoriesController
             .Produces<ReadCategoryDto>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status404NotFound);
         group.MapPut("/{id:int}", Update)
-            .AddEndpointFilter<ValidationFilter<UpdateCategoryDto>>()
             .Produces<ReadCategoryDto>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status404NotFound);
     }
 
-    private static async Task<Results<NoContent, ProblemHttpResult>> Delete(int id, LibraryDbContext dbContext)
+    private static async Task<IResult> GetAll(ICategoryService categoryService)
     {
-        var category = await dbContext.Categories.FindAsync(id);
-        if (category is null)
-        {
-            return TypedResults.Problem(statusCode: StatusCodes.Status404NotFound);
-        }
-
-        dbContext.Categories.Remove(category);
-        await dbContext.SaveChangesAsync();
-        return TypedResults.NoContent();
+        var result = await categoryService.GetAllAsync();
+        return result.IsError
+            ? TypedResults.Problem(result.Errors.ToProblemDetails())
+            : TypedResults.Ok(result.Value);
     }
 
-    private static async Task<Results<ProblemHttpResult, CreatedAtRoute<ReadCategoryDto>>> Create(CreateCategoryDto request, LibraryDbContext dbContext, CategoryMapper categoryMapper)
+    private static async Task<IResult> GetById(int id, ICategoryService categoryService)
     {
-        if (await dbContext.Categories.AnyAsync(existing => existing.Name == request.Name))
-        {
-            return TypedResults.Problem(statusCode: StatusCodes.Status409Conflict);
-        }
-
-        var category = categoryMapper.ToEntity(request);
-        dbContext.Categories.Add(category);
-        await dbContext.SaveChangesAsync();
-        var response = categoryMapper.ToReadDto(category);
-        return TypedResults.CreatedAtRoute(response, "GetById", new { id = category.Id });
+        var result = await categoryService.GetByIdAsync(id);
+        return result.IsError
+            ? TypedResults.Problem(result.Errors.ToProblemDetails())
+            : TypedResults.Ok(result.Value);
     }
 
-    private static async Task<Ok<List<ReadCategoryDto>>> GetAll(LibraryDbContext dbContext, CategoryMapper categoryMapper)
+    private static async Task<IResult> Create(CreateCategoryDto request, ICategoryService categoryService)
     {
-        var categories = await dbContext.Categories.AsNoTracking().ToListAsync();
-        return TypedResults.Ok(categories.Select(categoryMapper.ToReadDto).ToList());
+        var result = await categoryService.CreateAsync(request);
+        return result.IsError
+            ? TypedResults.Problem(result.Errors.ToProblemDetails())
+            : TypedResults.CreatedAtRoute(result.Value, "GetById", new { id = result.Value.Id });
     }
 
-    private static async Task<Results<Ok<ReadCategoryDto>, ProblemHttpResult>> GetById(int id, LibraryDbContext dbContext, CategoryMapper categoryMapper)
+    private static async Task<IResult> Update(int id, UpdateCategoryDto request, ICategoryService categoryService)
     {
-        var category = await dbContext.Categories.FindAsync(id);
-        if (category is null)
-        {
-            return TypedResults.Problem(detail: "Enter valid ID", statusCode: StatusCodes.Status404NotFound);
-        }
-        return TypedResults.Ok(categoryMapper.ToReadDto(category));
+        var result = await categoryService.UpdateAsync(id, request);
+        return result.IsError
+            ? TypedResults.Problem(result.Errors.ToProblemDetails())
+            : TypedResults.Ok(result.Value);
     }
 
-    private static async Task<Results<Ok<ReadCategoryDto>, ProblemHttpResult>> Update(int id, UpdateCategoryDto request, LibraryDbContext dbContext, CategoryMapper categoryMapper)
+    private static async Task<IResult> Delete(int id, ICategoryService categoryService)
     {
-        var category = await dbContext.Categories.FindAsync(id);
-        if (category is null)
-        {
-            return TypedResults.Problem(detail: "Enter valid ID", statusCode: StatusCodes.Status404NotFound);
-        }
-
-        if (request.Name is not null && string.IsNullOrWhiteSpace(request.Name))
-        {
-            return TypedResults.Problem(
-                detail: "Name not correct",
-                statusCode: StatusCodes.Status400BadRequest);
-        }
-
-        category.Name = request.Name ?? category.Name;
-        await dbContext.SaveChangesAsync();
-        return TypedResults.Ok(categoryMapper.ToReadDto(category));
+        var result = await categoryService.DeleteAsync(id);
+        return result.IsError
+            ? TypedResults.Problem(result.Errors.ToProblemDetails())
+            : TypedResults.NoContent();
     }
 }

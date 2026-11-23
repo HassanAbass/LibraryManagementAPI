@@ -16,6 +16,12 @@ public static class BookErrors
         Error.NotFound(
                 description: $"A book with Id {id} has not been found.");
 
+    public static Error TitleRequired =>
+        Error.Validation(code: "Title", description: "Title is required.");
+
+    public static Error DuplicateTitle =>
+        Error.Conflict(description: "A book with this title already exists.");
+
     public static Error HasLoans(int id) =>
         Error.Conflict(
                 description: $"A book with Id {id} cannot be deleted, because " +

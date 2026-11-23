@@ -1,10 +1,9 @@
-using FluentValidation;
-using LibraryManagementAPI.DataAccess;
 using LibraryManagementAPI.DTOs.Authors;
 using LibraryManagementAPI.Filter;
-using LibraryManagementAPI.Mapping;
+using LibraryManagementAPI.RequestParameters;
+using LibraryManagementAPI.RequestParameters.Enums;
+using LibraryManagementAPI.Services.Contracts;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace LibraryManagementAPI.Controllers
 {
@@ -12,14 +11,16 @@ namespace LibraryManagementAPI.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Tags("Authors")]
-    public class AuthorsController(LibraryDbContext libraryDbContext, AuthorMapper authorMapper, IValidator<CreateAuthorDto> createAuthorValidator) : ControllerBase
+    public class AuthorsController(IAuthorService authorService) : WebApiController
     {
         [HttpGet]
         [ProducesResponseType(typeof(List<ReadAuthorDto>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<List<ReadAuthorDto>>> Get()
+        public async Task<ActionResult<List<ReadAuthorDto>>> Get([FromQuery] PaginationParameters pagination)
         {
-            var authors = await libraryDbContext.Authors.Include(author => author.Books).ToListAsync();
-            return Ok(authors.Select(authorMapper.ToReadDto).ToList());
+            var result = await authorService.GetAllAsync(pagination);
+            HttpContext.Response.Headers.Append("X-Total-Count", result.Value.Count.ToString());
+            HttpContext.Response.Headers.Append("X-Total-Pages", Math.Ceiling((double)result.Value.Count / pagination.PageSize).ToString() );
+            return result.IsError ? Problem(result.Errors) : Ok(result.Value);
         }
 
         [ProducesResponseType<ReadAuthorDto>(StatusCodes.Status200OK)]
@@ -27,39 +28,22 @@ namespace LibraryManagementAPI.Controllers
         [HttpGet("{id:int}")]
         public async Task<ActionResult<ReadAuthorDto>> GetById(int id)
         {
-            var author = await libraryDbContext.Authors.FirstOrDefaultAsync(author => author.Id == id);
-            if (author is null)
-            {
-                return Problem(detail: $"Author with id {id} not found", statusCode: StatusCodes.Status404NotFound);
-            }
-            return Ok(authorMapper.ToReadDto(author));
+            var result = await authorService.GetByIdAsync(id);
+            return result.IsError ? Problem(result.Errors) : Ok(result.Value);
         }
- 
+
         [HttpPost]
         [ProducesResponseType(typeof(ReadAuthorDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<ActionResult<ReadAuthorDto>> Create(CreateAuthorDto request)
         {
-            var validationResult = await createAuthorValidator.ValidateAsync(request);
-            if (!validationResult.IsValid)
-            {
-                return ValidationProblem(new ValidationProblemDetails(validationResult.ToDictionary()));
-            }
-
-            if (await libraryDbContext.Authors.AnyAsync(author => author.FirstName == request.FirstName && author.LastName == request.LastName))
-            {
-                return Problem(detail: "Resource already exists", statusCode: StatusCodes.Status409Conflict);
-            }
-
-            var author = authorMapper.ToEntity(request);
-            libraryDbContext.Authors.Add(author);
-            await libraryDbContext.SaveChangesAsync();
-
-            var response = authorMapper.ToReadDto(author);
-            return CreatedAtAction(nameof(GetById), new { id = author.Id }, response);
+            var result = await authorService.CreateAsync(request);
+            return result.IsError
+                ? Problem(result.Errors)
+                : CreatedAtAction(nameof(GetById), new { id = result.Value.Id }, result.Value);
         }
-            
+
         [HttpPut("{id:int}")]
         [ProducesResponseType(typeof(ReadAuthorDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -67,26 +51,8 @@ namespace LibraryManagementAPI.Controllers
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<ActionResult<ReadAuthorDto>> Update(int id, UpdateAuthorDto request)
         {
-            var author = await libraryDbContext.Authors.FirstOrDefaultAsync(author => author.Id == id);
-            if (author is null)
-            {
-                return Problem(detail: $"Author with id {id} not found", statusCode: StatusCodes.Status404NotFound);
-            }
-
-            if (string.IsNullOrWhiteSpace(request.FirstName) || string.IsNullOrWhiteSpace(request.LastName))
-            {
-                return Problem(detail: "First name and last name are required", statusCode: StatusCodes.Status400BadRequest);
-            }
-
-            if (await libraryDbContext.Authors.AnyAsync(author => author.Id != id && author.FirstName == request.FirstName && author.LastName == request.LastName))
-            {
-                return Problem(detail: "Resource already exists", statusCode: StatusCodes.Status409Conflict);
-            }
-
-            authorMapper.UpdateEntity(request, author);
-            await libraryDbContext.SaveChangesAsync();
-
-            return Ok(authorMapper.ToReadDto(author));
+            var result = await authorService.UpdateAsync(id, request);
+            return result.IsError ? Problem(result.Errors) : Ok(result.Value);
         }
 
         [HttpDelete("{id:int}")]
@@ -94,14 +60,8 @@ namespace LibraryManagementAPI.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult> Delete(int id)
         {
-            var author = await libraryDbContext.Authors.FirstOrDefaultAsync(author => author.Id == id);
-            if (author is null)
-            {
-                return Problem(detail: $"Author with id {id} not found", statusCode: StatusCodes.Status404NotFound);
-            }
-            libraryDbContext.Authors.Remove(author);
-            await libraryDbContext.SaveChangesAsync();
-            return NoContent();
+            var result = await authorService.DeleteAsync(id);
+            return result.IsError ? Problem(result.Errors) : NoContent();
         }
     }
 }

@@ -28,6 +28,8 @@ builder.Services.AddScoped<IValidator<UpdateCategoryDto>, UpdateCategoryValidato
 builder.Services.AddScoped<IValidator<CreateAuthorDto>, CreateAuthorValidator>();
 builder.Services.AddScoped<LogActionFilter>();
 builder.Services.AddScoped<IBookService, BookService>();
+builder.Services.AddScoped<IAuthorService, AuthorService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
 //builder.Services.AddValidation();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
