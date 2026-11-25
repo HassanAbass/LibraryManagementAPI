@@ -3,6 +3,7 @@ using LibraryManagementAPI.Filter;
 using LibraryManagementAPI.RequestParameters;
 using LibraryManagementAPI.RequestParameters.Enums;
 using LibraryManagementAPI.Services.Contracts;
+using Microsoft.AspNetCore.JsonPatch.SystemTextJson;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LibraryManagementAPI.Controllers
@@ -52,6 +53,27 @@ namespace LibraryManagementAPI.Controllers
         public async Task<ActionResult<ReadAuthorDto>> Update(int id, UpdateAuthorDto request)
         {
             var result = await authorService.UpdateAsync(id, request);
+            return result.IsError ? Problem(result.Errors) : Ok(result.Value);
+        }
+
+        [HttpPatch("{id:int}")]
+        [Consumes("application/json-patch+json")]
+        [ProducesResponseType(typeof(ReadAuthorDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<ReadAuthorDto>> Patch(int id, JsonPatchDocument<PatchAuthorDto> request)
+        {
+            var patchDto = new PatchAuthorDto();
+            request.ApplyTo(patchDto,
+            jsonPatchError => ModelState.AddModelError(
+                jsonPatchError.AffectedObject.GetType().Name,
+                jsonPatchError.ErrorMessage));
+
+            if (!TryValidateModel(patchDto))
+            {
+                return ValidationProblem(ModelState);
+            }
+            var result = await authorService.PatchAsync(id, request);
             return result.IsError ? Problem(result.Errors) : Ok(result.Value);
         }
 

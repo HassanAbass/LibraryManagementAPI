@@ -6,6 +6,7 @@ using LibraryManagementAPI.Errors;
 using LibraryManagementAPI.Mapping;
 using LibraryManagementAPI.RequestParameters;
 using LibraryManagementAPI.Services.Contracts;
+using Microsoft.AspNetCore.JsonPatch.SystemTextJson;
 using Microsoft.EntityFrameworkCore;
 
 namespace LibraryManagementAPI.Services;
@@ -78,6 +79,20 @@ public sealed class AuthorService(
         }
 
         authorMapper.UpdateEntity(request, author);
+        await dbContext.SaveChangesAsync();
+        return authorMapper.ToReadDto(author);
+    }
+
+    public async Task<ErrorOr<ReadAuthorDto>> PatchAsync(int id, JsonPatchDocument<PatchAuthorDto> request)
+    {
+        var author = await dbContext.Authors.Include(author => author.Books).FirstOrDefaultAsync(author => author.Id == id);
+        if (author is null)
+        {
+            return AuthorErrors.NotFound(id);
+        }
+        var patchDto = authorMapper.ToPatchDto(author);
+        request.ApplyTo(patchDto);
+        authorMapper.UpdateEntity(patchDto, author);
         await dbContext.SaveChangesAsync();
         return authorMapper.ToReadDto(author);
     }

@@ -15,4 +15,10 @@ public partial class AuthorMapper
     [MapperIgnoreTarget(nameof(Author.Id))]
     [MapperIgnoreTarget(nameof(Author.Books))]
     public partial void UpdateEntity(UpdateAuthorDto dto, [MappingTarget] Author entity);
+
+    public partial PatchAuthorDto ToPatchDto(Author entity);
+
+    [MapperIgnoreTarget(nameof(Author.Id))]
+    [MapperIgnoreTarget(nameof(Author.Books))]
+    public partial void UpdateEntity(PatchAuthorDto dto, [MappingTarget] Author entity);
 }
