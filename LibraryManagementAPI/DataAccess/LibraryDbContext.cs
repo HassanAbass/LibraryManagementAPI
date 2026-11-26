@@ -12,6 +12,8 @@ namespace LibraryManagementAPI.DataAccess
         public DbSet<Author> Authors => Set<Author>();
         public DbSet<Category> Categories => Set<Category>();
         public DbSet<Book> Books => Set<Book>();
+        public DbSet<Members> Members => Set<Members>();
+        public DbSet<Loan> Loans => Set<Loan>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -31,6 +33,18 @@ namespace LibraryManagementAPI.DataAccess
                 new Category { Id = 1, Name = "test" },
                 new Category { Id = 2, Name = "AC" },
                 new Category { Id = 3, Name = "Fiber" });
+
+            modelBuilder.Entity<Loan>()
+                .HasOne(loan => loan.Member)
+                .WithMany(member => member.Loans)
+                .HasForeignKey(loan => loan.MemberId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Loan>()
+                .HasOne(loan => loan.Book)
+                .WithMany(book => book.Loans)
+                .HasForeignKey(loan => loan.BookId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

@@ -10,5 +10,6 @@ public class Book
     public Category? Category { get; set; }
 
     public ICollection<Author> Authors { get; set; } = [];
+    public ICollection<Loan> Loans { get; set; } = [];
 
 }

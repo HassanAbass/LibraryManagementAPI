@@ -140,9 +140,17 @@ public sealed class BookService(LibraryDbContext dbContext, BookMapper bookMappe
             return BookErrors.AuthorsNotFound();
         }
 
+        var activeLoanCount = await dbContext.Loans
+            .CountAsync(loan => loan.BookId == id && loan.ReturnedAt == null);
+        if (request.TotalCopies < activeLoanCount)
+        {
+            return BookErrors.NotEnoughAvailableCopies(id);
+        }
+
         bookMapper.UpdateEntity(request, book);
         book.Category = category;
         book.Authors = authors;
+        book.AvailableCopies = request.TotalCopies - activeLoanCount;
         await dbContext.SaveChangesAsync();
         return bookMapper.ToReadDto(book);
     }
@@ -153,6 +161,11 @@ public sealed class BookService(LibraryDbContext dbContext, BookMapper bookMappe
         if (book is null)
         {
             return BookErrors.BookNotFound(id);
+        }
+
+        if (await dbContext.Loans.AnyAsync(loan => loan.BookId == id))
+        {
+            return BookErrors.HasLoans(id);
         }
 
         dbContext.Books.Remove(book);
